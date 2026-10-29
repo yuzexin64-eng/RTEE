@@ -6,7 +6,7 @@ time_rounded,datetime,UTC+8,Timestamp rounded to the reporting interval
 timestamp_rounded,datetime,UTC+8,Timestamp used to order GPS points and assign event windows
 speed_kmh,float,km/h,Vehicle speed at the GPS point
 direction_deg,float,degree,Travel direction in degrees
-grid_id_10km,string,-,Identifier of a 10 km x 10 km cell in the local projected coordinate system used for the demo
+grid_id_10km,string,-,Identifier of the 10 km grid cell
 city_code_masked,string,-,City identifier used in the example table
 emission_standard,string,-,Vehicle emission standard category
 vehicle_length_mm,integer,mm,Vehicle length
