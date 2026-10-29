@@ -12,5 +12,6 @@ dependencies:
   - seaborn
   - pyyaml
   - geopandas
+  - pyproj
   - rasterio
   - pyarrow
