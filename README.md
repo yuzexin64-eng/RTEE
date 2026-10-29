@@ -4,7 +4,7 @@ This repository accompanies the study applying the rainfall–transport–econom
 
 ## Repository contents
 
-- `scripts/00_run_demo.py`: processes GPS-point samples, assigns event windows, estimates vehicle movement and CO₂ emissions, and aggregates activity by projected 10 km × 10 km grid cells.
+- `scripts/00_run_demo.py`: processes GPS-point samples, assigns event windows, estimates vehicle movement and CO₂ emissions, and aggregates activity by 10 km grid.
 - `scripts/01_run_economic_loss_demo.py`: derives city-level freight activity and speed changes and calculates a direct economic-loss proxy.
 - `config/`: workflow settings and scenario parameters.
 - `data/demo/`: sample GPS-point and vehicle-attribute tables used by the scripts.
@@ -36,7 +36,7 @@ Generate the grid-level summary:
 python scripts/00_run_demo.py --config config/demo_config.yaml
 ```
 
-Output: `outputs/demo/grid_daily_summary.csv`. The demo uses a local Transverse Mercator projection centered at 113.9°E, 34.7°N and assigns points to 10,000 m × 10,000 m cells in projected coordinates. This projection is intended for the supplied local demo data; choose an appropriate projected CRS when applying the workflow to another study area.
+Output: `outputs/demo/grid_daily_summary.csv`.
 
 Generate the city-level direct-loss table:
 
