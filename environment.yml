@@ -1,0 +1,16 @@
+name: rtee
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - scikit-learn
+  - xgboost
+  - shap
+  - matplotlib
+  - seaborn
+  - pyyaml
+  - geopandas
+  - rasterio
+  - pyarrow

@@ -1,0 +1,34 @@
+variable,type,unit,description
+plate_id_hash,string,-,Vehicle identifier used to link GPS points with vehicle attributes
+longitude_jittered,float,degree,Longitude coordinate for a GPS point
+latitude_jittered,float,degree,Latitude coordinate for a GPS point
+time_rounded,datetime,UTC+8,Timestamp rounded to the reporting interval
+timestamp_rounded,datetime,UTC+8,Timestamp used to order GPS points and assign event windows
+speed_kmh,float,km/h,Vehicle speed at the GPS point
+direction_deg,float,degree,Travel direction in degrees
+grid_id_10km,string,-,Identifier of the 10 km grid cell
+city_code_masked,string,-,City identifier used in the example table
+emission_standard,string,-,Vehicle emission standard category
+vehicle_length_mm,integer,mm,Vehicle length
+vehicle_width_mm,integer,mm,Vehicle width
+vehicle_height_mm,integer,mm,Vehicle height
+gross_weight_kg,integer,kg,Gross vehicle weight
+curb_weight_kg,integer,kg,Curb vehicle weight
+vehicle_type,string,-,Vehicle type category
+plate_color,string,-,Vehicle plate color category
+fuel_type,string,-,Vehicle fuel category such as diesel or LNG
+road_class,string,-,Road type associated with a road segment
+distance_km,float,km,Distance represented by a trajectory segment
+duration_min,float,min,Duration represented by a trajectory segment
+co2_g_demo,float,g,CO2 emissions estimate in the grid-level example workflow
+freight_activity_change_pct_demo,float,ratio,Relative change in freight activity between rainfall and pre-event periods
+speed_change_pct_demo,float,ratio,Relative change in mean speed between rainfall and pre-event periods
+direct_loss_shock_index_demo,float,index,Composite indicator combining freight activity and speed changes
+direct_economic_loss_proxy_demo,float,example currency units,City-level direct economic-loss proxy
+rainfall_mm,float,mm,Rainfall amount over the analysis period
+road_density_km_per_km2,float,km/km2,Road-network density within a grid or city
+gdp,float,currency,Observed or projected gross domestic product
+population_density,float,persons/km2,Population density
+land_use_share_*,float,share,Share of a land-use class within a grid or city
+direct_loss_target,float,model units,City-level direct economic-loss estimate
+environmental_cost_target,float,model units,Grid-level environmental cost estimate

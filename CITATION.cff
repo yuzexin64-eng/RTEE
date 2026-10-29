@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use these code examples, please cite the associated article and this repository."
+title: "RTEE code and demonstration workflows"
+type: software
+authors:
+  - family-names: Zhao
+    given-names: Pengjun
+  - family-names: Yu
+    given-names: Zexin
+  - family-names: Ye
+    given-names: Huaixiao
+  - family-names: Zhou
+    given-names: Yitong
+  - family-names: Kan
+    given-names: Changcheng
+  - family-names: Yang
+    given-names: Shize
+license: MIT
+version: "1.0.0"
+repository-code: "https://github.com/Shize-Yang/RTEE"
