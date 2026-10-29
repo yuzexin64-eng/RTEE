@@ -13,7 +13,6 @@ vehicle_length_mm,integer,mm,Vehicle length
 vehicle_width_mm,integer,mm,Vehicle width
 vehicle_height_mm,integer,mm,Vehicle height
 gross_weight_kg,integer,kg,Gross vehicle weight
-curb_weight_kg,integer,kg,Curb vehicle weight
 vehicle_type,string,-,Vehicle type category
 plate_color,string,-,Vehicle plate color category
 fuel_type,string,-,Vehicle fuel category such as diesel or LNG
