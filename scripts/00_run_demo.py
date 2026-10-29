@@ -9,7 +9,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from pyproj import CRS, Transformer
 
 try:
     import yaml
@@ -97,6 +99,27 @@ def demo_emission_factor_g_per_km(row):
     return base * 0.72
 
 
+
+def assign_10km_grid(df: pd.DataFrame) -> pd.Series:
+    """Assign GPS points to 10 km x 10 km cells in a local projected CRS."""
+    local_crs = CRS.from_proj4(
+        "+proj=tmerc +lat_0=34.7 +lon_0=113.9 +k=1 "
+        "+x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+    )
+    transformer = Transformer.from_crs("EPSG:4326", local_crs, always_xy=True)
+    x, y = transformer.transform(
+        pd.to_numeric(df["longitude_jittered"]).to_numpy(),
+        pd.to_numeric(df["latitude_jittered"]).to_numpy(),
+    )
+
+    grid_x = np.floor(np.asarray(x) / 10_000).astype(int)
+    grid_y = np.floor(np.asarray(y) / 10_000).astype(int)
+    return pd.Series(
+        [f"G_X{ix}_Y{iy}" for ix, iy in zip(grid_x, grid_y)],
+        index=df.index,
+        dtype="string",
+    )
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config/demo_config.yaml")
@@ -124,12 +147,7 @@ def main() -> None:
     df["duration_min"] = (df["timestamp_rounded"] - df["prev_time"]).dt.total_seconds().div(60).fillna(0).clip(lower=0)
     df["emission_factor_g_per_km_demo"] = df.apply(demo_emission_factor_g_per_km, axis=1)
     df["co2_g_demo"] = df["distance_km"] * df["emission_factor_g_per_km_demo"]
-    df["grid_id_10km"] = (
-        "G_DEMO_"
-        + ((pd.to_numeric(df["longitude_jittered"]) - 113.4) * 10).astype(int).astype(str).str.zfill(3)
-        + "_"
-        + ((pd.to_numeric(df["latitude_jittered"]) - 34.4) * 10).astype(int).astype(str).str.zfill(3)
-    )
+    df["grid_id_10km"] = assign_10km_grid(df)
     summary = (
         df.groupby(["grid_id_10km", "event_window"], as_index=False)
         .agg(
