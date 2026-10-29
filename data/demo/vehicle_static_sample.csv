@@ -1,4 +1,4 @@
 plate_id_hash,emission_standard,vehicle_length_mm,vehicle_width_mm,vehicle_height_mm,gross_weight_kg,curb_weight_kg,vehicle_type,plate_color,fuel_type
-veh_demo_001,VI,7050,2550,3560,40000,48805,heavy_truck,masked_yellow,diesel
-veh_demo_002,V,7050,2550,3560,40000,48070,tractor_trailer,masked_yellow,LNG
+veh_demo_001,VI,7050,2550,3560,40000,,heavy_truck,masked_yellow,diesel
+veh_demo_002,V,7050,2550,3560,40000,,tractor_trailer,masked_yellow,LNG
 veh_demo_003,VI,5995,2350,3150,18000,7600,medium_truck,masked_yellow,diesel
