@@ -1,7 +1,7 @@
 """Run the RTEE trajectory aggregation workflow.
 
 The script assigns event windows to GPS-point samples and summarizes
-vehicle movement and CO2 emissions by projected 10 km grid cell.
+vehicle movement and CO2 emissions by grid cell.
 """
 
 from __future__ import annotations
