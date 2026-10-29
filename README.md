@@ -4,7 +4,7 @@ This repository accompanies the study applying the rainfall–transport–econom
 
 ## Repository contents
 
-- `scripts/00_run_demo.py`: processes GPS-point samples, assigns event windows, and derives segment-level movement and CO₂-emission estimates. It does not assign points to spatial grids.
+- `scripts/00_run_demo.py`: processes GPS-point samples, assigns event windows, and derives segment-level movement and CO₂-emission estimates.
 - `scripts/01_run_economic_loss_demo.py`: derives city-level freight activity and speed changes and calculates a direct economic-loss proxy.
 - `config/`: workflow settings and scenario parameters.
 - `data/demo/`: sample GPS-point and vehicle-attribute tables used by the scripts.
