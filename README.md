@@ -4,12 +4,12 @@ This repository accompanies the study applying the rainfall–transport–econom
 
 ## Repository contents
 
-- `scripts/00_run_demo.py`: processes GPS-point samples, assigns event windows, and derives segment-level movement and CO₂-emission estimates.
+- `scripts/00_run_demo.py`: processes GPS-point samples, assigns event windows, estimates vehicle movement and CO₂ emissions, and aggregates activity by 10 km grid.
 - `scripts/01_run_economic_loss_demo.py`: derives city-level freight activity and speed changes and calculates a direct economic-loss proxy.
 - `config/`: workflow settings and scenario parameters.
 - `data/demo/`: sample GPS-point and vehicle-attribute tables used by the scripts.
 - `data/metadata/data_dictionary.csv`: variable definitions for the input and output tables.
-- `outputs/demo/`: example output tables; workflow outputs are generated when the scripts are run.
+- `outputs/demo/`: example tables produced by the workflows.
 
 ## Requirements
 
@@ -30,13 +30,13 @@ python -m pip install -r requirements.txt
 
 ## Run the workflows
 
-Generate trajectory-segment movement and emission estimates:
+Generate the grid-level summary:
 
 ```bash
 python scripts/00_run_demo.py --config config/demo_config.yaml
 ```
 
-Output: `outputs/demo/trajectory_segments_demo.csv`. Each row corresponds to a GPS-point sample with derived segment distance, duration, and demonstration CO₂ emissions.
+Output: `outputs/demo/grid_daily_summary.csv`.
 
 Generate the city-level direct-loss table:
 
@@ -69,7 +69,8 @@ Output: `outputs/demo/city_economic_loss.csv`.
 │   └── 01_run_economic_loss_demo.py
 └── outputs/
     └── demo/
-        └── city_economic_loss.csv
+        ├── city_economic_loss.csv
+        └── grid_daily_summary.csv
 ```
 
 ## Citation
