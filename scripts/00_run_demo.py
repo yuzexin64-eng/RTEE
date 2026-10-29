@@ -1,7 +1,7 @@
 """Run the RTEE trajectory aggregation workflow.
 
 The script assigns event windows to GPS-point samples and summarizes
-vehicle movement and CO2 emissions by grid cell.
+vehicle movement and CO2 emissions by projected 10 km grid cell.
 """
 
 from __future__ import annotations
@@ -99,7 +99,6 @@ def demo_emission_factor_g_per_km(row):
     return base * 0.72
 
 
-
 def assign_10km_grid(df: pd.DataFrame) -> pd.Series:
     """Assign GPS points to 10 km x 10 km cells in a local projected CRS."""
     local_crs = CRS.from_proj4(
@@ -119,6 +118,7 @@ def assign_10km_grid(df: pd.DataFrame) -> pd.Series:
         index=df.index,
         dtype="string",
     )
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
