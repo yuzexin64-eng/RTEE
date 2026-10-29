@@ -1,7 +1,7 @@
-"""Run the RTEE trajectory-processing demonstration.
+"""Run the RTEE trajectory aggregation workflow.
 
-The script assigns event windows to GPS-point samples and derives
-segment-level movement and CO2 emissions without spatial grid aggregation.
+The script assigns event windows to GPS-point samples and summarizes
+vehicle movement and CO2 emissions by grid cell.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def load_config(path: Path) -> dict:
             "vehicle_static": values["input_files"]["vehicle_static"],
         },
         "output_files": {
-            "trajectory_segments_demo": values["output_files"]["trajectory_segments_demo"],
+            "grid_daily_summary": values["output_files"]["grid_daily_summary"],
             "city_economic_loss": values["output_files"].get("city_economic_loss", "outputs/demo/city_economic_loss.csv"),
         },
         "event_windows": {
@@ -124,26 +124,30 @@ def main() -> None:
     df["duration_min"] = (df["timestamp_rounded"] - df["prev_time"]).dt.total_seconds().div(60).fillna(0).clip(lower=0)
     df["emission_factor_g_per_km_demo"] = df.apply(demo_emission_factor_g_per_km, axis=1)
     df["co2_g_demo"] = df["distance_km"] * df["emission_factor_g_per_km_demo"]
+    df["grid_id_10km"] = (
+        "G_DEMO_"
+        + ((pd.to_numeric(df["longitude_jittered"]) - 113.4) * 10).astype(int).astype(str).str.zfill(3)
+        + "_"
+        + ((pd.to_numeric(df["latitude_jittered"]) - 34.4) * 10).astype(int).astype(str).str.zfill(3)
+    )
+    summary = (
+        df.groupby(["grid_id_10km", "event_window"], as_index=False)
+        .agg(
+            demo_vehicle_count=("plate_id_hash", "nunique"),
+            demo_point_count=("plate_id_hash", "count"),
+            demo_distance_km=("distance_km", "sum"),
+            demo_duration_min=("duration_min", "sum"),
+            demo_co2_g=("co2_g_demo", "sum"),
+            mean_speed_kmh=("speed_kmh", "mean"),
+        )
+        .sort_values(["grid_id_10km", "event_window"])
+    )
 
-    output_columns = [
-        "plate_id_hash",
-        "timestamp_rounded",
-        "event_window",
-        "longitude_jittered",
-        "latitude_jittered",
-        "speed_kmh",
-        "distance_km",
-        "duration_min",
-        "emission_factor_g_per_km_demo",
-        "co2_g_demo",
-    ]
-    output = df[output_columns].copy()
-
-    out_path = resolve(root, cfg["output_files"]["trajectory_segments_demo"])
+    out_path = resolve(root, cfg["output_files"]["grid_daily_summary"])
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    output.to_csv(out_path, index=False, encoding="utf-8-sig")
+    summary.to_csv(out_path, index=False, encoding="utf-8-sig")
     print(f"Wrote {out_path}")
-    print(output.to_string(index=False))
+    print(summary.to_string(index=False))
 
 
 if __name__ == "__main__":
