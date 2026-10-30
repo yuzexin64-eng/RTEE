@@ -50,8 +50,6 @@ negative values indicate a gain under this reduced-form proxy.
 - Baseline route shares are normalized over the supplied OD table. National
   interpretation requires the complete relevant national OD network; a small
   demonstration network cannot substitute for that denominator.
-- A route with `q_normal=0` receives zero baseline weight even if new traffic
-  appears during rainfall; this is a limitation of the manuscript's weighting.
 - The transport-cost shock is inferred from OD flow changes assuming constant
   elasticity, not independently observed transport prices.
 - The output is a *short-run gross output disturbance proxy* based on sector
