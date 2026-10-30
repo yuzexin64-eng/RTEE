@@ -56,7 +56,4 @@ negative values indicate a gain under this reduced-form proxy.
   value added and fixed short-run structures, not a measured causal welfare
   loss or downstream supply-chain loss.
 - The road-transport revenue ratio is applied to value added as a calibration
-  proxy; it does not establish an observed city-level road-freight value-added
-  share and may include passenger and support activities.
-- The standalone GPS/grid/emissions demo (`00_run_demo.py`) is separate and
-  remains illustrative; its formulas are not used in this economic module.
+  proxy.
