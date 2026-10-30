@@ -10,9 +10,6 @@ analysis or enough inputs to reproduce the published numerical estimates.
 - `scripts/00_run_demo.py`: a separate illustrative GPS/grid/emissions workflow;
   its simplified emissions and grid calculations are **not** the paper's
   empirical emissions implementation.
-- `scripts/01_run_economic_loss_demo.py`: the paper's *economic-module equation
-  chain* applied to synthetic OD and city-sector inputs, without arbitrary
-  `0.7/0.3` activity/speed weights.
 - `README_ECONOMIC.md`: equations, data requirements, assumptions and limits for
   the economic workflow.
 
