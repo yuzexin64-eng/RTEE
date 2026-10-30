@@ -15,8 +15,8 @@ python -m unittest discover -s tests -v
   truck-kilometres. Each OD pair appears once. Explicit observed zeros are
   allowed; unknown/missing flow must not be coded as zero.
 - `data/demo/city_economic_base_sample.csv`: `city`,
-  `transport_storage_postal_value_added_rmb_2023`, annual 2023 city value added
-  in RMB (not GDP in PPP USD, and not the 1-km SSP gridded GDP product).
+  `transport_storage_postal_value_added_rmb`, annual city value added
+  in RMB.
 
 **Important upstream prerequisites:** The supplied OD means must be derived
 from the actual event (26–29 August 2023) and properly matched control days
