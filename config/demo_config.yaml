@@ -1,9 +1,9 @@
+# Legacy GPS/grid/emissions demonstration only; not the paper's economic module.
 input_files:
   gps_points: data/demo/gps_points_sample.csv
   vehicle_static: data/demo/vehicle_static_sample.csv
 output_files:
   grid_daily_summary: outputs/demo/grid_daily_summary.csv
-  city_economic_loss: outputs/demo/city_economic_loss.csv
 event_windows:
   pre_event:
     start: "2023-09-18 00:00:00"
@@ -11,9 +11,6 @@ event_windows:
   rainfall_period:
     start: "2023-09-19 00:00:00"
     end: "2023-09-19 23:59:59"
-economic_loss_demo:
-  activity_metric: distance_km
-  demo_transport_gdp_column: baseline_transport_gdp_demo
 aggregation:
   group_by:
     - grid_id_10km
