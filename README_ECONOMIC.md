@@ -1,10 +1,5 @@
 ## Manuscript-aligned economic module (illustrative data)
 
-The economic module is implemented in `scripts/01_run_economic_loss_demo.py` and
-configured in `config/economic_loss_config.yaml`. It replaces the old arbitrary
-`0.7 * freight_activity_reduction + 0.3 * speed_reduction` proxy with the
-RTEE manuscript's OD-flow / implicit-cost / city-output equations.
-
 ```bash
 python scripts/01_run_economic_loss_demo.py --config config/economic_loss_config.yaml
 python scripts/01_run_economic_loss_demo.py --config config/economic_loss_config.yaml --theta 3.0
