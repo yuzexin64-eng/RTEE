@@ -1,0 +1,13 @@
+# Economic-module example using synthetic, already-aggregated OD and city data.
+# Upstream analysts must implement the paper's event/control and rainfall masks.
+input_files:
+  od_period_mean_flows: data/demo/od_period_mean_flows_sample.csv
+  city_economic_base: data/demo/city_economic_base_sample.csv
+output_files:
+  city_economic_disturbance: outputs/demo/city_economic_disturbance.csv
+  od_diagnostics: outputs/demo/od_cost_shock_diagnostics.csv
+economic_module:
+  theta: 4.5
+  road_revenue_100m_rmb_2023: 57080.2
+  sector_revenue_100m_rmb_2023: 134758.9
+  event_days: 4

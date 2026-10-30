@@ -1,148 +1,198 @@
-"""Run the RTEE direct economic-loss workflow.
+"""Reproduce the *methodological chain* of the RTEE short-run economic module.
 
-The script joins GPS-point samples with vehicle attributes, derives freight
-activity and speed changes across event windows, and calculates a city-level
-direct economic-loss proxy.
+This script is a transparent, executable illustration of the equations in the
+RTEE manuscript (economic module) and Supplementary Note 6. It does NOT
+reproduce the article's numerical results: the bundled OD flows and GDP values
+are synthetic, and rainfall/control sample selection is an upstream step.
+
+Inputs (preprocessed by the analyst):
+  - One row per intercity OD pair, with mean daily freight flows in the matched
+    normal/control period and in the rainfall event period.
+  - Annual 2023 city value added for transport, storage and postal services,
+    denominated in RMB (not in 10^4 or 10^8 RMB).
+
+Equations:
+  dlnq_od   = ln[(q_rain_od + 1)/(q_normal_od + 1)]
+  dln_tau   = -dlnq_od / theta
+  phi_od    = q_normal_od / sum_all_OD(q_normal_od)
+  dln_u_c   = -sum_{OD with destination c}(phi_od * dln_tau_od)
+  GDProad_c = alpha_road * GDP_transport_storage_postal_c
+  Ldaily_c  = (GDProad_c / 365) * (1 - exp(dln_u_c))
+  Levent_c  = event_days * Ldaily_c
+
+The manuscript's route-to-city rule is 'o -> d = c' (destination city).
+Signed negative values are retained for routes/cities with increased flows;
+this script does not silently truncate gains to zero.
 """
 
 from __future__ import annotations
 
 import argparse
-import math
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import yaml
 
-try:
-    import yaml
-except ModuleNotFoundError:
-    yaml = None
-
-
-def resolve(root: Path, p: str) -> Path:
-    return root / p
+OD_COLUMNS = ("origin_city", "destination_city", "q_normal", "q_rain")
+GDP_COLUMNS = ("city", "transport_storage_postal_value_added_rmb_2023")
 
 
-def load_config(path: Path) -> dict:
-    if yaml is not None:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
-    text = path.read_text(encoding="utf-8").splitlines()
-    values = {}
-    section = None
-    for line in text:
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        if not line.startswith(" ") and line.rstrip().endswith(":"):
-            section = line.strip()[:-1]
-            values[section] = {}
-            continue
-        if section and ":" in line:
-            key, value = line.strip().split(":", 1)
-            value = value.strip()
-            if value:
-                values[section][key] = value
-    return {
-        "input_files": {
-            "gps_points": values["input_files"]["gps_points"],
-            "vehicle_static": values["input_files"]["vehicle_static"],
-        },
-        "output_files": {
-            "city_economic_loss": values["output_files"].get("city_economic_loss", "outputs/demo/city_economic_loss.csv"),
-        },
-        "event_windows": {
-            "pre_event": {"start": "2023-09-18 00:00:00", "end": "2023-09-18 23:59:59"},
-            "rainfall_period": {"start": "2023-09-19 00:00:00", "end": "2023-09-19 23:59:59"},
-        },
-    }
+def _require_columns(df: pd.DataFrame, required: tuple[str, ...], name: str) -> None:
+    missing = sorted(set(required).difference(df.columns))
+    if missing:
+        raise ValueError(f"{name} is missing required columns: {missing}")
 
 
-def assign_event_window(df: pd.DataFrame, cfg: dict) -> pd.Series:
-    result = pd.Series("outside_window", index=df.index)
-    for name, window in cfg["event_windows"].items():
-        start = pd.to_datetime(window["start"])
-        end = pd.to_datetime(window["end"])
-        result.loc[df["timestamp_rounded"].between(start, end, inclusive="both")] = name
-    return result
+def _numeric_nonnegative(df: pd.DataFrame, column: str, name: str) -> None:
+    values = pd.to_numeric(df[column], errors="coerce")
+    if values.isna().any() or not np.isfinite(values.to_numpy()).all() or (values < 0).any():
+        raise ValueError(f"{name}.{column} must contain finite, nonnegative values")
+    df[column] = values.astype(float)
 
 
-def haversine_scalar(lon1, lat1, lon2, lat2):
-    radius = 6371.0088
-    lon1, lat1, lon2, lat2 = [math.radians(float(v)) for v in [lon1, lat1, lon2, lat2]]
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * radius * math.asin(min(1, math.sqrt(max(0, a))))
+def compute_economic_disturbance(
+    od: pd.DataFrame,
+    city_economy: pd.DataFrame,
+    *,
+    theta: float = 4.5,
+    road_revenue_100m_rmb: float = 57080.2,
+    sector_revenue_100m_rmb: float = 134758.9,
+    event_days: int = 4,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Return city-level monetary disturbances and OD-level diagnostics.
 
+    q_normal and q_rain MUST be matched mean daily OD flows, after upstream
+    rainfall-mask, time-window, and rain-free control selection. Missing OD
+    observations must be resolved upstream; missing does not mean zero.
 
-def prepare_segments(gps: pd.DataFrame, static: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    df = gps.merge(static, on="plate_id_hash", how="left", validate="many_to_one")
-    df["timestamp_rounded"] = pd.to_datetime(df["timestamp_rounded"])
-    df["event_window"] = assign_event_window(df, cfg)
-    df = df[df["event_window"].isin(["pre_event", "rainfall_period"])].copy()
-    df = df.sort_values(["plate_id_hash", "timestamp_rounded"]).reset_index(drop=True)
-    df["prev_lon"] = df.groupby(["plate_id_hash", "event_window"])["longitude_jittered"].shift(1)
-    df["prev_lat"] = df.groupby(["plate_id_hash", "event_window"])["latitude_jittered"].shift(1)
-    df["prev_time"] = df.groupby(["plate_id_hash", "event_window"])["timestamp_rounded"].shift(1)
-    df["distance_km"] = [
-        0.0 if pd.isna(plon) else haversine_scalar(plon, plat, lon, lat)
-        for plon, plat, lon, lat in zip(df["prev_lon"], df["prev_lat"], df["longitude_jittered"], df["latitude_jittered"])
-    ]
-    df["duration_min"] = (df["timestamp_rounded"] - df["prev_time"]).dt.total_seconds().div(60).fillna(0).clip(lower=0)
-    return df
+    The normal-flow shares are normalized across ALL supplied OD pairs, so
+    inference for a national network requires the full relevant OD universe.
+    """
+    if not np.isfinite(theta) or theta <= 0:
+        raise ValueError("theta must be finite and strictly positive")
+    if not np.isfinite(road_revenue_100m_rmb) or road_revenue_100m_rmb <= 0:
+        raise ValueError("road_revenue_100m_rmb must be finite and positive")
+    if not np.isfinite(sector_revenue_100m_rmb) or sector_revenue_100m_rmb <= 0:
+        raise ValueError("sector_revenue_100m_rmb must be finite and positive")
+    if road_revenue_100m_rmb > sector_revenue_100m_rmb:
+        raise ValueError("road-transport revenue cannot exceed total sector revenue")
+    if isinstance(event_days, bool) or int(event_days) != event_days or event_days <= 0:
+        raise ValueError("event_days must be a positive integer")
+
+    routes = od.copy()
+    cities = city_economy.copy()
+    _require_columns(routes, OD_COLUMNS, "OD table")
+    _require_columns(cities, GDP_COLUMNS, "city economic-base table")
+    if routes.empty or cities.empty:
+        raise ValueError("Both input tables must be nonempty")
+
+    for col in ("origin_city", "destination_city"):
+        if routes[col].isna().any() or routes[col].astype(str).str.strip().eq("").any():
+            raise ValueError(f"OD table contains missing {col} values")
+        routes[col] = routes[col].astype(str).str.strip()
+    if cities["city"].isna().any() or cities["city"].astype(str).str.strip().eq("").any():
+        raise ValueError("City economic-base table contains missing city values")
+    cities["city"] = cities["city"].astype(str).str.strip()
+
+    if routes.duplicated(["origin_city", "destination_city"]).any():
+        raise ValueError("OD table must contain exactly one row per origin-destination pair")
+    if (routes["origin_city"] == routes["destination_city"]).any():
+        raise ValueError("Only intercity OD pairs are supported (origin != destination)")
+    if cities["city"].duplicated().any():
+        raise ValueError("City economic-base table must contain one row per city")
+
+    for col in ("q_normal", "q_rain"):
+        _numeric_nonnegative(routes, col, "OD table")
+    gdp_col = "transport_storage_postal_value_added_rmb_2023"
+    _numeric_nonnegative(cities, gdp_col, "city economic-base table")
+
+    # Paper: baseline OD share is computed across the whole reference network.
+    total_normal_flow = routes["q_normal"].sum()
+    if not np.isfinite(total_normal_flow) or total_normal_flow <= 0:
+        raise ValueError("The total normal-period OD flow must be positive")
+
+    missing_dest = sorted(set(routes["destination_city"]) - set(cities["city"]))
+    if missing_dest:
+        raise ValueError(f"Missing economic-base values for destination cities: {missing_dest}")
+
+    routes["delta_ln_q"] = np.log1p(routes["q_rain"]) - np.log1p(routes["q_normal"])
+    routes["delta_ln_transport_cost"] = -routes["delta_ln_q"] / theta
+    routes["baseline_od_weight"] = routes["q_normal"] / total_normal_flow
+    routes["weighted_transport_cost_shock"] = (
+        routes["baseline_od_weight"] * routes["delta_ln_transport_cost"]
+    )
+
+    # Manuscript: Δln(u_c) = -Σ_{o→d=c} φ_od Δln(τ_od).
+    city_shocks = (
+        routes.groupby("destination_city", as_index=False)["weighted_transport_cost_shock"]
+        .sum()
+        .rename(columns={"destination_city": "city"})
+    )
+    city_shocks["delta_ln_welfare"] = -city_shocks["weighted_transport_cost_shock"]
+
+    result = cities[["city", gdp_col]].merge(
+        city_shocks[["city", "delta_ln_welfare"]], on="city", how="left", validate="one_to_one"
+    )
+    # Cities with no incoming routes have zero shock in this reduced-form rule.
+    result["delta_ln_welfare"] = result["delta_ln_welfare"].fillna(0.0)
+    alpha_road = road_revenue_100m_rmb / sector_revenue_100m_rmb
+    result["road_transport_revenue_share"] = alpha_road
+    result["road_transport_value_added_rmb_2023"] = result[gdp_col] * alpha_road
+    result["road_transport_value_added_rmb_per_day"] = (
+        result["road_transport_value_added_rmb_2023"] / 365.0
+    )
+    # Signed short-run gross output disturbance; do not clip gains to zero.
+    result["output_disturbance_rmb_per_day"] = (
+        result["road_transport_value_added_rmb_per_day"]
+        * (-np.expm1(result["delta_ln_welfare"]))
+    )
+    result["output_disturbance_rmb_event"] = (
+        result["output_disturbance_rmb_per_day"] * event_days
+    )
+    result["theta"] = float(theta)
+    result["event_days"] = int(event_days)
+
+    return result.sort_values("city").reset_index(drop=True), routes.sort_values(
+        ["origin_city", "destination_city"]
+    ).reset_index(drop=True)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="config/demo_config.yaml")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", default="config/economic_loss_config.yaml")
+    parser.add_argument("--theta", type=float, default=None, help="Override configured elasticity")
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[1]
-    cfg = load_config(resolve(root, args.config))
-
-    gps = pd.read_csv(resolve(root, cfg["input_files"]["gps_points"]))
-    static = pd.read_csv(resolve(root, cfg["input_files"]["vehicle_static"]))
-    seg = prepare_segments(gps, static, cfg)
-
-    activity = (
-        seg.groupby(["city_code_masked", "event_window"], as_index=False)
-        .agg(
-            vehicle_count=("plate_id_hash", "nunique"),
-            point_count=("plate_id_hash", "count"),
-            activity_distance_km=("distance_km", "sum"),
-            activity_duration_min=("duration_min", "sum"),
-            mean_speed_kmh=("speed_kmh", "mean"),
-        )
+    cfg_path = Path(args.config)
+    if not cfg_path.is_absolute():
+        cfg_path = root / cfg_path
+    cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+    inputs = cfg["input_files"]
+    settings = cfg["economic_module"]
+    od = pd.read_csv(root / inputs["od_period_mean_flows"])
+    city_economy = pd.read_csv(root / inputs["city_economic_base"])
+    theta = settings["theta"] if args.theta is None else args.theta
+    cities, routes = compute_economic_disturbance(
+        od,
+        city_economy,
+        theta=float(theta),
+        road_revenue_100m_rmb=float(settings["road_revenue_100m_rmb_2023"]),
+        sector_revenue_100m_rmb=float(settings["sector_revenue_100m_rmb_2023"]),
+        event_days=int(settings["event_days"]),
     )
-
-    wide = activity.pivot(index="city_code_masked", columns="event_window")
-    wide.columns = [f"{metric}_{window}" for metric, window in wide.columns]
-    wide = wide.reset_index()
-
-    # Example baseline transport-GDP values used by the city-level workflow.
-    demo_gdp = {
-        "CN_DEMO_4101": 12_000_000.0,
-        "CN_DEMO_4102": 9_000_000.0,
-        "CN_DEMO_4103": 6_000_000.0,
-    }
-    wide["baseline_transport_gdp_demo"] = wide["city_code_masked"].map(demo_gdp).fillna(5_000_000.0)
-
-    pre_distance = wide["activity_distance_km_pre_event"].replace(0, pd.NA)
-    rain_distance = wide["activity_distance_km_rainfall_period"]
-    pre_speed = wide["mean_speed_kmh_pre_event"].replace(0, pd.NA)
-    rain_speed = wide["mean_speed_kmh_rainfall_period"]
-
-    wide["freight_activity_change_pct_demo"] = (rain_distance - pre_distance) / pre_distance
-    wide["speed_change_pct_demo"] = (rain_speed - pre_speed) / pre_speed
-    wide["freight_activity_reduction_demo"] = (-wide["freight_activity_change_pct_demo"]).clip(lower=0).fillna(0)
-    wide["speed_reduction_demo"] = (-wide["speed_change_pct_demo"]).clip(lower=0).fillna(0)
-    wide["direct_loss_shock_index_demo"] = 0.7 * wide["freight_activity_reduction_demo"] + 0.3 * wide["speed_reduction_demo"]
-    wide["direct_economic_loss_proxy_demo"] = wide["baseline_transport_gdp_demo"] * wide["direct_loss_shock_index_demo"]
-
-    out_path = resolve(root, cfg["output_files"]["city_economic_loss"])
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    wide.to_csv(out_path, index=False, encoding="utf-8-sig")
-    print(f"Wrote {out_path}")
-    print(wide.to_string(index=False))
+    city_out = root / cfg["output_files"]["city_economic_disturbance"]
+    od_out = root / cfg["output_files"]["od_diagnostics"]
+    city_out.parent.mkdir(parents=True, exist_ok=True)
+    od_out.parent.mkdir(parents=True, exist_ok=True)
+    cities.to_csv(city_out, index=False, encoding="utf-8-sig")
+    routes.to_csv(od_out, index=False, encoding="utf-8-sig")
+    print(f"Wrote {city_out}")
+    print(f"Wrote {od_out}")
+    print(f"Illustrative signed daily total (RMB): {cities['output_disturbance_rmb_per_day'].sum():,.2f}")
+    print(f"Illustrative signed event total (RMB): {cities['output_disturbance_rmb_event'].sum():,.2f}")
+    print("Synthetic demo outputs are NOT the paper's empirical estimates.")
 
 
 if __name__ == "__main__":

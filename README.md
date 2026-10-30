@@ -1,82 +1,62 @@
 # Extreme Rainfalls Increase Economic and Environmental Costs of Highway Freight
 
-This repository accompanies the study applying the rainfall–transport–economy–environment (RTEE) framework to assess the effects of extreme rainfall on highway freight in China. It provides runnable Python workflows, configuration files, example input tables, variable definitions, and example output tables.
+This repository accompanies the RTEE study of extreme rainfall and road freight
+in China. The public repository includes **illustrative** workflows and synthetic
+sample data. It does not contain the restricted 261-million-record truck GPS
+analysis or enough inputs to reproduce the published numerical estimates.
 
-## Repository contents
+## Workflows
 
-- `scripts/00_run_demo.py`: processes GPS-point samples, assigns event windows, estimates vehicle movement and CO₂ emissions, and aggregates activity by 10 km grid.
-- `scripts/01_run_economic_loss_demo.py`: derives city-level freight activity and speed changes and calculates a direct economic-loss proxy.
-- `config/`: workflow settings and scenario parameters.
-- `data/demo/`: sample GPS-point and vehicle-attribute tables used by the scripts.
-- `data/metadata/data_dictionary.csv`: variable definitions for the input and output tables.
-- `outputs/demo/`: example tables produced by the workflows.
+- `scripts/00_run_demo.py`: a separate illustrative GPS/grid/emissions workflow;
+  its simplified emissions and grid calculations are **not** the paper's
+  empirical emissions implementation.
+- `scripts/01_run_economic_loss_demo.py`: the paper's *economic-module equation
+  chain* applied to synthetic OD and city-sector inputs, without arbitrary
+  `0.7/0.3` activity/speed weights.
+- `README_ECONOMIC.md`: equations, data requirements, assumptions and limits for
+  the economic workflow.
 
-## Requirements
+## Setup
 
 Python 3.11 is recommended.
-
-Create the conda environment:
-
-```bash
-conda env create -f environment.yml
-conda activate rtee
-```
-
-Alternatively, install the dependencies in an existing Python environment:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-## Run the workflows
-
-Generate the grid-level summary:
+## Run
 
 ```bash
+# Manuscript-aligned economic equation chain, on synthetic inputs
+python scripts/01_run_economic_loss_demo.py --config config/economic_loss_config.yaml
+# Elasticity sensitivity checks (theta = 3, 4.5, 6)
+python scripts/01_run_economic_loss_demo.py --theta 3.0
+python scripts/01_run_economic_loss_demo.py --theta 6.0
+# Run automated economic-module tests
+python -m unittest discover -s tests -v
+# Separate GPS/grid/emissions demonstration
 python scripts/00_run_demo.py --config config/demo_config.yaml
 ```
 
-Output: `outputs/demo/grid_daily_summary.csv`.
+The economic script writes `outputs/demo/city_economic_disturbance.csv` and
+`outputs/demo/od_cost_shock_diagnostics.csv`. The GPS script writes
+`outputs/demo/grid_daily_summary.csv` (despite the legacy filename, the
+aggregation is by **grid and event window**, not by individual calendar date).
+All outputs are generated when scripts run; the repository does not ship them.
 
-Generate the city-level direct-loss table:
+## Scientific scope
 
-```bash
-python scripts/01_run_economic_loss_demo.py --config config/demo_config.yaml
-```
+The economic module needs precomputed mean daily **intercity OD flows** for
+matched rainfall/control samples, plus annual 2023 city-level transport,
+storage and postal-services value added in RMB. The event/control rainfall
+masks, rain-free controls and spatial matching must be prepared upstream;
+GPS-point speeds or truck-kilometres cannot substitute for OD flow inputs.
+The supplied CSVs are **synthetic examples**. The code illustrates the equations,
+not the article's published estimates or a causal validation of those equations.
+See [`README_ECONOMIC.md`](README_ECONOMIC.md) for full details.
 
-Output: `outputs/demo/city_economic_loss.csv`.
+## Citation and license
 
-## Repository structure
-
-```text
-.
-├── README.md
-├── CITATION.cff
-├── LICENSE
-├── requirements.txt
-├── environment.yml
-├── config/
-│   ├── demo_config.yaml
-│   └── scenario_config.yaml
-├── data/
-│   ├── demo/
-│   │   ├── gps_points_sample.csv
-│   │   └── vehicle_static_sample.csv
-│   └── metadata/
-│       └── data_dictionary.csv
-├── scripts/
-│   ├── 00_run_demo.py
-│   └── 01_run_economic_loss_demo.py
-└── outputs/
-    └── demo/
-        ├── city_economic_loss.csv
-        └── grid_daily_summary.csv
-```
-
-## Citation
-
-Please cite the associated article when using this code or adapting the workflows. Repository citation metadata are provided in `CITATION.cff`.
-
-## License
-
-The MIT license applies to the code and example files in this repository.
+Please cite the associated article when using or adapting these workflows.
+Repository citation metadata are provided in `CITATION.cff`. The repository
+uses the MIT license.
